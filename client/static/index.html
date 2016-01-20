@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html ng-app="myApp">
+<head>
+	<title>Customers and Order in Full Mean</title>
+	<script type="text/javascript" src="./angular.js"></script>
+	<script type="text/javascript" src="./angular-route.js"></script>
+	<script type="text/javascript">
+		var customerorder_app = angular.module('myApp', ['ngRoute']);
+
+		customerorder_app.config(function($routeProvider) {
+
+			$routeProvider
+				.when('/', {
+					templateUrl: './partials/customers.html',
+					controller: 'customerController',
+					controllerAs: 'customerCtrl'
+				})
+				.when('/orders', {
+					templateUrl: './partials/orders.html',
+					controller: 'orderController',
+					controllerAs: 'orderCtrl'
+				})
+				.otherwise({
+					redirectTo: '/'
+				})
+		})
+
+		customerorder_app.factory('productFactory', function() {
+			factory = {};
+
+			products = [
+				{name: "Nike Shoes"},
+				{name: "Bose Headphones"},
+				{name: "Phone 2.0"},
+				{name: "Leg Warmers"},
+				{name: "Water"}
+
+			]
+
+			factory.index = function(callback) {
+				callback(products);
+			}
+
+			return factory;
+		})
+
+		customerorder_app.factory('customerFactory', function($http) {
+			factory = {};
+
+			customers = [];
+
+			var errormessage = [];
+
+			factory.index = function(callback) {
+				$http.get('/customers').success(function(output) {
+					console.log('Received from server index' + output)
+					
+					customers = output;
+
+					callback(customers);
+				})
+
+				
+			}
+
+			factory.delete = function(info, callback) {
+
+				$http.delete('/customers/'+info._id).success(function(output) {
+					console.log('Received from server delete' + output);
+
+					callback(customers);
+				})
+			}
+
+			factory.create = function(info, callback) {
+
+
+				var errors = false;
+
+				for(i = 0; i < customers.length; i++) {
+					if(customers[i].name == info.name) {
+
+						errormessage.push("Duplicate name, try again");
+						console.log(errormessage);
+						errors = true;
+					}
+				}
+
+				if(errors == false) {
+
+					errormessage = [];
+					$http.post('/customers', info).success(function(output) {
+						console.log('Received from server for creating a customer' + output);
+					})
+
+				}
+
+				callback(customers);
+			}
+
+			factory.getErrors = function(callback) {
+				if(errormessage.length < 1) {
+					callback("No Error");
+				} else {
+					callback(errormessage);
+				}
+			}
+
+			return factory;
+
+		})
+
+		customerorder_app.factory('orderFactory', function($http) {
+
+			factory = {};
+
+			orders = [];
+
+			factory.index = function(callback) {
+				$http.get('/orders').success(function(output) {
+					console.log(output)
+					orders = output;
+					callback(orders);
+				})
+				
+			}
+
+			factory.create = function(info, callback) {
+
+				console.log(info);
+
+				$http.post('/orders', info).success(function(output) {
+					console.log('Received from server create order' + output);
+					callback(orders);
+
+				})
+
+				
+
+			}
+
+			return factory;
+
+		})
+
+		customerorder_app.controller('customerController', function(customerFactory) {
+
+			this.customers = [];
+			this.errors;
+
+			var _this = this;
+			customerFactory.index(function(data) {
+				console.log(data);
+				_this.customers = data;
+			})
+
+			this.addCustomer = function() {
+				console.log(this.newCustomer);
+
+				this.errors = [];
+
+
+				
+				var _this = this;
+				customerFactory.create(this.newCustomer, function() {
+
+					customerFactory.getErrors(function(errormessage) {
+						if(errormessage != "No Error") {
+							_this.errors = errormessage;
+						}
+					})
+
+					customerFactory.index(function(data) {
+						_this.customers = data;
+					})
+
+				})
+
+			
+
+				this.newCustomer = {};
+
+			}
+
+			this.removeCustomer = function(customer) {
+
+				var _this = this;
+				customerFactory.delete(customer, function() {
+
+
+					customerFactory.index(function(data) {
+						_this.customers = data;
+					})
+				})
+
+			}
+
+
+
+		})
+
+		customerorder_app.controller('orderController', function(orderFactory, customerFactory, productFactory) {
+
+			this.orders = [];
+			this.customers = [];
+			this.products = [];
+
+			var _this = this;
+			orderFactory.index(function(data) {
+				console.log(data);
+				_this.orders = data;
+			})
+
+			customerFactory.index(function(data) {
+				console.log(data);
+				_this.customers = data;
+			})
+
+			productFactory.index(function(data) {
+				_this.products = data;
+			})
+
+
+			this.addOrder = function() {
+
+				console.log(this.newOrder)
+
+				var _this = this;
+				orderFactory.create(this.newOrder, function() {
+
+					orderFactory.index(function(data) {
+						_this.orders = data;
+					})
+
+				
+				})
+
+				this.newOrder = {};
+			}
+
+
+		})
+
+	</script>
+</head>
+<body>
+
+<a href="#/dashboard">Dashboard</a> | <a href="#/products">Products</a> | <a href="#/">Customers</a> | <a href="#/orders">Orders</a> | <a href="#/settings">Settings</a>
+<hr>
+<div ng-view="">
+</div>
+
+</body>
+</html>
+
